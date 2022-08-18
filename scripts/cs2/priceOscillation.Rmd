@@ -1,0 +1,163 @@
+# Price Oscillations
+
+```{r}
+# filter the price variables
+dPrice <-
+  data %>%
+    filter(scenario != "historical") %>%
+    filter(str_starts(variable, "Price")) %>%
+    filter(period >= 2010) %>% # 2005 values are invalid
+    droplevels()
+varsPE <-
+  levels(dPrice$variable) %>%
+  str_subset("^Price\\|Primary Energy\\|") %>%
+  str_subset("\\|Moving Avg$", negate = TRUE)
+varsSE <-
+  levels(dPrice$variable) %>%
+  str_subset("^Price\\|Secondary Energy\\|") %>%
+  str_subset("\\|Moving Avg$", negate = TRUE)
+varsFE <- 
+  levels(dPrice$variable) %>%
+  str_subset("^Price\\|Final Energy\\|") %>%
+  str_subset(
+    "\\|Moving Avg|\\|Total LCOE|\\|Fuel Cost|\\|Transport and Distribution|\\|Carbon Price Component|\\|Other Taxes$",
+    negate = TRUE)
+```
+
+```{r}
+# create a table for output in the default styling
+kableDefault <- function(tbl, caption) {
+  tbl %>% 
+    kbl(
+      caption = caption,
+      booktabs = TRUE,
+      digits = 2,
+    ) %>%
+    kable_styling(
+      bootstrap_options = c("striped", "condensed"),
+      latex_options = c("striped", "HOLD_position"),
+      full_width = FALSE
+    )
+}
+```
+
+
+
+## Relative Variation
+
+```{r}
+relativeVariation <- function(v, p) {
+  sum(abs(diff(v))) / (max(v) - min(v))
+}
+
+relVariData <- 
+  dPrice %>% 
+  calcTimeSeriesStats(
+    c(varsPE, varsSE, varsFE), 
+    stats = list("relative variation" = relativeVariation), 
+    from = 2010)
+```
+
+### Summary
+
+```{r}
+summaryData <- 
+  relVariData %>% 
+  group_by(scenario) %>% 
+  summarise(
+    "Min." = min(value, na.rm=TRUE), 
+    "1st Qu." = quantile(value, probs=0.25, na.rm=TRUE),
+    "Median" = median(value, na.rm=TRUE),
+    "Mean" = mean(value, na.rm=TRUE),
+    "3rd Qu." = quantile(value, probs=0.75, na.rm=TRUE),
+    "Max." = max(value, na.rm=TRUE))
+
+kableDefault(summaryData, "Relative Variation of Prices: summary over variables and regions")
+```
+
+### By Variable
+
+```{r}
+medianRV <- 
+  relVariData %>% 
+  group_by(scenario, variable) %>% 
+  summarise(value = median(value, na.rm = TRUE)) %>% 
+  pivot_wider(names_from = scenario, values_from = value)
+
+kableDefault(medianRV, "Relative Variation of Prices: median over Regions")
+```
+
+```{r}
+maxRV <- 
+  relVariData %>% 
+  group_by(scenario, variable) %>% 
+  summarise(value = max(value, na.rm=TRUE)) %>% 
+  pivot_wider(names_from = scenario, values_from = value)
+
+kableDefault(maxRV, "Relative Variation of Prices: max over Regions")
+```
+
+\newpage
+
+### By Variable and Region
+
+```{r}
+showRelativeVariation <- function(relVariData, var) {
+  d <- 
+    relVariData %>% 
+    filter(variable == var) %>% 
+    select(scenario, region, value) %>% 
+    pivot_wider(names_from = region, values_from = value)
+  d %>% 
+    kableDefault(paste0(var, ": Relative Variation")) %>% 
+    cat("\n\n")
+}
+```
+
+
+#### PE Prices
+
+```{r results='asis'}
+walk(varsPE, showRelativeVariation, relVariData = relVariData)
+```
+
+\newpage
+
+#### SE Prices
+
+
+```{r results='asis'}
+walk(varsSE, showRelativeVariation, relVariData = relVariData)
+```
+
+\newpage
+
+#### FE Prices
+
+```{r results='asis'}
+walk(varsFE, showRelativeVariation, relVariData = relVariData)
+``` 
+
+\newpage
+
+
+## Line Plots
+
+### PE Prices
+
+```{r}
+walk(varsPE, showLinePlots, data = dPrice, scale = "fixed")
+```
+
+### SE Prices
+
+
+```{r}
+walk(varsSE, showLinePlots, data = dPrice, scale = "fixed")
+```
+
+### FE Prices
+
+```{r}
+walk(varsFE, showLinePlots, data = dPrice, scale = "fixed")
+``` 

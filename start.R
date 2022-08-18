@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# |  (C) 2006-2020 Potsdam Institute for Climate Impact Research (PIK)
+# |  (C) 2006-2022 Potsdam Institute for Climate Impact Research (PIK)
 # |  authors, and contributors see CITATION.cff file. This file is part
 # |  of REMIND and licensed under AGPL-3.0-or-later. Under Section 7 of
 # |  AGPL-3.0, you are granted additional permissions described in the
@@ -34,6 +34,8 @@ helpText <- "
 #'              reduced convergence criteria for testing the full model.
 #'
 #' --reprepare, -R: rewrite full.gms and restart run
+#'
+#' --reset, -0: reset main.gms to default.cfg and exit
 #'
 #' --restart, -r: interactively restart run(s)
 #'
@@ -166,7 +168,7 @@ configure_cfg <- function(icfg, iscen, iscenarios, isettings) {
         icfg[[switchname]] <- iscenarios[iscen, switchname]
       }
     }
-    if (icfg$slurmConfig %in% paste(seq(1:16)) & ! any(c("--testOneRegi", "--debug") %in% argv)) {
+    if (icfg$slurmConfig %in% paste(seq(1:16)) & ! any(c("--debug", "--quick", "--testOneRegi") %in% argv)) {
       icfg$slurmConfig <- choose_slurmConfig(identifier = icfg$slurmConfig)
     }
     if (icfg$slurmConfig %in% c(NA, ""))       {
@@ -267,7 +269,8 @@ configure_cfg <- function(icfg, iscen, iscenarios, isettings) {
 if(!exists("argv")) argv <- commandArgs(trailingOnly = TRUE)
 
 # define arguments that are accepted
-accepted <- c("1" = "--testOneRegi", d = "--debug", i = "--interactive", r = "--restart", R = "--reprepare", t = "--test", h = "--help", q = "--quick")
+accepted <- c("0" = "--reset", "1" = "--testOneRegi", d = "--debug", i = "--interactive", r = "--restart",
+              R = "--reprepare", t = "--test", h = "--help", q = "--quick")
 
 # search for strings that look like -i1asrR and transform them into long flags
 onedashflags <- unlist(strsplit(paste0(argv[grepl("^-[a-zA-Z0-9]*$", argv)], collapse = ""), split = ""))
@@ -297,6 +300,19 @@ if ("--help" %in% argv) {
   q()
 }
 
+if ("--reset" %in% argv) {
+  source("./config/default.cfg")
+  cfg$gms$c_expname <- cfg$title
+  cfg$gms$c_description <- substr(cfg$description, 1, 255)
+  lock_id <- gms::model_lock(timeout1 = 0.2)
+  on.exit(gms::model_unlock(lock_id))
+  lucode2::manipulateConfig("main.gms", cfg$gms)
+  message("Settings in main.gms were reset to values specified in config/default.cfg.")
+  gms::model_unlock(lock_id)
+  on.exit()
+  q()
+}
+
 if (any(c("--testOneRegi", "--debug", "--quick") %in% argv) & "--restart" %in% argv & ! "--reprepare" %in% argv) {
   message("\nIt is impossible to combine --restart with --debug, --quick or --testOneRegi because full.gms has to be rewritten.\n",
   "If this is what you want, use --reprepare instead, or answer with y:")
@@ -313,7 +329,7 @@ modeltestRunsUsed <- 0
 testOneRegi_region <- ""
 
 # Save whether model is locked before runs are started
-model_was_locked <- file.exists(".lock")
+model_was_locked <- if (exists("is_model_locked")) is_model_locked() else file.exists(".lock")
 
 # Restart REMIND in existing results folder (if required by user)
 if (any(c("--reprepare", "--restart") %in% argv)) {
@@ -331,6 +347,7 @@ if (any(c("--reprepare", "--restart") %in% argv)) {
     message("\nBecause of the flag --reprepare, move full.gms -> full_old.gms and fulldata.gdx -> fulldata_old.gdx such that runs are newly prepared.\n")
   }
   if(! exists("slurmConfig")) slurmConfig <- choose_slurmConfig()
+  if ("--quick" %in% argv) slurmConfig <- paste(slurmConfig, "--time=60")
   message()
   for (outputdir in outputdirs) {
     message("Restarting ", outputdir)
@@ -439,7 +456,7 @@ if (any(c("--reprepare", "--restart") %in% argv)) {
     if (length(grep("_$", rownames(scenarios))) > 0) stop(paste0("These titles end with _: ", paste0(rownames(scenarios)[grep("_$", rownames(scenarios))], collapse = ", "), ". This may lead start.R to select wrong gdx files. Stopping now."))
   } else {
     # if no csv was provided create dummy list with default/testOneRegi as the only scenario
-    if ("--testOneRegi" %in% argv) {
+    if (any(c("--quick", "--testOneRegi") %in% argv)) {
       scenarios <- data.frame("testOneRegi" = "testOneRegi", row.names = "testOneRegi")
     } else {
       scenarios <- data.frame("default" = "default", row.names = "default")
@@ -449,9 +466,10 @@ if (any(c("--reprepare", "--restart") %in% argv)) {
   ###################### Loop over scenarios ###############################
 
   # ask for slurmConfig if not specified for every run
-  if(! exists("slurmConfig") & (any(c("--debug", "--testOneRegi", "--quick") %in% argv) | ! "slurmConfig" %in% names(scenarios) || any(is.na(scenarios$slurmConfig)))) {
+  if(! exists("slurmConfig") & (any(c("--debug", "--quick", "--testOneRegi") %in% argv) | ! "slurmConfig" %in% names(scenarios) || any(is.na(scenarios$slurmConfig)))) {
     slurmConfig <- choose_slurmConfig()
-    if (any(c("--debug", "--testOneRegi") %in% argv) && !is.na(config.file)) {
+    if ("--quick" %in% argv) slurmConfig <- paste(slurmConfig, "--time=60")
+    if (any(c("--debug", "--quick", "--testOneRegi") %in% argv) && !is.na(config.file)) {
       message("\nYour slurmConfig selection will overwrite the settings in your scenario_config file.")
     }
   }
@@ -546,5 +564,5 @@ message("\nFinished: ", startedRuns, " runs started. ", waitingRuns, " runs are 
 if ('--test' %in% argv) {
   message("You are in --test mode. Rdata files were written, but no runs were started. ", ignorederrors, " errors were identified.")
 } else if (model_was_locked & (! "--restart" %in% argv | "--reprepare" %in% argv)) {
-  message("The file .lock existed before runs were started, so they will have to queue.")
+  message("The model was locked before runs were started, so they will have to queue.")
 }

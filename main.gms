@@ -1,4 +1,4 @@
-*** |  (C) 2006-2020 Potsdam Institute for Climate Impact Research (PIK)
+*** |  (C) 2006-2022 Potsdam Institute for Climate Impact Research (PIK)
 *** |  authors, and contributors see CITATION.cff file. This file is part
 *** |  of REMIND and licensed under AGPL-3.0-or-later. Under Section 7 of
 *** |  AGPL-3.0, you are granted additional permissions described in the
@@ -87,7 +87,7 @@
 * 
 * Input data revision: 6.311
 * 
-* Last modification (input data): Thu Jun 23 10:11:30 2022
+* Last modification (input data): Fri Jul 15 20:16:56 2022
 * 
 *###################### R SECTION END (VERSION INFO) ###########################
 
@@ -142,8 +142,8 @@ option profile = 0;
 
 
 ***---------------------    Run name and description    -------------------------
-$setGlobal c_expname  default
-$setGlobal c_description  REMIND run with default settings
+$setGlobal c_expname  SSP2EU-PkBudg500
+$setGlobal c_description  SSP2EU-PkBudg500: This climate policy scenario follows the Shared Socioeconomic Pathways 2 called Middle of the Road. The stylized climate policy scenario assumes a peak budget of 500 Gt?CO2 on total CO2 emissions from 2015 to 2100. This is a 1.5??C scena
 
 ***------------------------------------------------------------------------------
 ***                           MODULES
@@ -168,7 +168,7 @@ $setGlobal growth  exogenous          !! def = exogenous
 ***---------------------    21_tax    -------------------------------------------
 $setGlobal tax  on                    !! def = on
 ***---------------------    22_subsidizeLearning    -----------------------------
-$setGlobal subsidizeLearning  off     !! def = off
+$setGlobal subsidizeLearning  globallyOptimal     !! def = off
 ***---------------------    23_capitalMarket    ---------------------------------
 $setGlobal capitalMarket  debt_limit     !! def = debt_limit
 ***---------------------    24_trade    -----------------------------------------
@@ -194,13 +194,13 @@ $setglobal industry  fixed_shares     !! def = subsectors
 ***---------------------    39_CCU    -------------------------------------------
 $setglobal CCU  on !! def = on
 ***---------------------    40_techpol  -----------------------------------------
-$setglobal techpol  none              !! def = none
+$setglobal techpol  NDC              !! def = none
 ***---------------------    41_emicapregi  --------------------------------------
 $setglobal emicapregi  none           !! def = none
 ***---------------------    42_banking  -----------------------------------------
 $setglobal banking  off               !! def = off
 ***---------------------    45_carbonprice  -------------------------------------
-$setglobal carbonprice  none          !! def = none
+$setglobal carbonprice  diffCurvPhaseIn2Lin          !! def = none
 ***---------------------    46_carbonpriceRegi  ---------------------------------
 $setglobal carbonpriceRegi  none      !! def = none
 ***---------------------    47_regipol  -------------------------------------
@@ -363,7 +363,8 @@ parameters
   cm_CESMkup_build               "switch for setting markup cost to CES nodes in buildings" 
   c_BaselineAgriEmiRed     "switch to lower agricultural base line emissions as fraction of standard assumption, a value of 0.25 will lower emissions by a fourth"
   cm_deuCDRmax                 "switch to limit maximum annual CDR amount in Germany in MtCO2 per y"
-  cm_EnSecScen             "switch for running an ARIADNE energy security scenario, introducing a tax on pegas in Germany from 2020 to 2050"
+  cm_EnSecScen             "switch for running an ARIADNE energy security scenario, introducing a tax on PE fossil energy in Germany"
+  cm_Ger_Pol               "switch for selecting different policies for Germany used in the ARIADNE scenarios"
 ;
 
 *** --------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -379,10 +380,10 @@ cm_keep_presolve_gdxes  = 0;     !! def = 0
 cm_nash_autoconverge   = 1;     !! def = 1
 $setglobal cm_MAgPIE_coupling  off     !! def = "off"
 
-cm_emiscen        = 1;               !! def = 1
-$setglobal cm_rcp_scen  none         !! def = "none"
+cm_emiscen        = 9;               !! def = 1
+$setglobal cm_rcp_scen  rcp20         !! def = "none"
 $setglobal cm_rcp_scen_build  none   !! def = "none"
-cm_co2_tax_2020   = -1;              !! def = -1
+cm_co2_tax_2020   = 100;              !! def = -1
 cm_co2_tax_growth = 1.05;            !! def = 1.05
 c_macscen         = 1;               !! def = 1
 
@@ -420,7 +421,7 @@ $setglobal cm_demScen  gdp_SSP2     !! def = gdp_SSP2EU
 cm_GDPcovid      = 0;            !! def = 0
 
 *AG* and *CB* for cm_startyear greater than 2005, you have to copy the fulldata.gdx (rename it to: input_ref.gdx) from the run you want to build your new run onto.
-cm_startyear      = 2005;      !! def = 2005 for a BAU, 2015 for policy runs
+cm_startyear      = 2025;      !! def = 2005 for a BAU, 2015 for policy runs
 c_start_budget    = 2100;      !! def = 2100
 
 cm_prtpScen         = 3;         !! def = 3
@@ -452,7 +453,7 @@ c_ccsinjecratescen    = 1;         !! def = 1
 $setglobal c_ccsinjecrateRegi  off  !! def = "off"
 c_ccscapratescen      = 1;         !! def = 1
 c_export_tax_scen     = 0;         !! def = 0
-cm_iterative_target_adj  = 0;      !! def = 0
+cm_iterative_target_adj  = 9;      !! def = 0
 $setglobal cm_NDC_version  2022_cond    !! def = 2022_cond
 cm_NDC_divergentScenario = 0;           !! def = 0
 $setglobal cm_CO2TaxSectorMarkup  off   !! def = off
@@ -466,12 +467,12 @@ cm_expoLinear_yearStart  = 2050;   !! def = 2050
 c_budgetCO2from2020FFI   = 700;    !! def = 700 
 c_abtrdy                 = 2010;   !! def = 2010
 c_abtcst                 = 1;      !! def = 1
-c_budgetCO2from2020      = 1150;   !! def = 1150
+c_budgetCO2from2020      = 500;   !! def = 1150
 $setGlobal cm_regiExoPrice  off    !! def = off
 $setGlobal cm_regiCO2target  off   !! def = off
 cm_postTargetIncrease    = 2;      !! def = 2
 $setGlobal cm_quantity_regiCO2target  off !! def = off
-cm_peakBudgYr            = 2100;   !! def = 2050
+cm_peakBudgYr            = 2080;   !! def = 2050
 cm_taxCO2inc_after_peakBudgYr = 3; !! def = 3
 cm_CO2priceRegConvEndYr  = 2050;   !! def = 2050
 $setGlobal cm_emiMktETS  off       !! def = off
@@ -522,7 +523,7 @@ $setGlobal cm_INNOPATHS_pushCalib  none !! def = none
 $setGlobal cm_INNOPATHS_reducCostB  none !! def = none
 $setGlobal cm_INNOPATHS_effHP  5 !! def = 5
 
-$setGlobal cm_EDGEtr_scen  Mix1  !! def = Mix1
+$setGlobal cm_EDGEtr_scen  Mix4  !! def = Mix1
 
 $setGlobal c_regi_nucscen  all !! def = all
 $setGlobal c_regi_capturescen  all !! def = all
@@ -543,6 +544,8 @@ $setGlobal cm_import_EU  off !! def off
 $setGlobal cm_import_ariadne  off !! def off
 *** switch for ariadne energy security scenario
 $setGlobal cm_EnSecScen  off !! def off
+*** switch for ariadne policy assumptions for Germany
+$setGlobal cm_Ger_Pol  off !! def off
 
 *** buildings services_putty switches
 cm_logitCal_markup_conv_b = 0.8; !! def 0.8
